@@ -1,0 +1,17 @@
+**/.DS_Store
+# venvs anywhere
+**/.venv/
+
+# python junk
+**/__pycache__/
+**/*.pyc
+
+# MLflow / Hydra outputs anywhere
+**/mlruns/
+**/mlflow.db
+**/outputs/
+
+# local data/artifacts (optional, depends on your policy)
+**/data/
+**/models/
+**/reports/

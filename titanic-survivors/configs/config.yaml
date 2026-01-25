@@ -1,0 +1,44 @@
+run:
+  name: "rf_reduced_threshold"
+  seed: 16
+
+mlflow:
+  enabled: true
+  experiment_name: "titanic"
+  tracking_uri: null
+  log_config_as_artifact: true
+  log_params: true
+
+hydra:
+  job:
+    chdir: true
+
+data:
+  test_size: 0.2
+  shuffle: true
+  random_state: ${run.seed}
+  target: "Survived"
+
+features:
+  drop_cols: ['PassengerId', 'Name', 'Ticket', 'Cabin', 'Fare']
+  numeric_cols: ['Age', 'SibSp', 'Parch', 'Pclass']
+  categorical_cols: ['Sex', 'Embarked']
+
+preprocess:
+  numeric_imputer: "median"
+  numeric_add_indicator: false
+  categorical_imputer: "most_frequent"
+  onehot_handle_unknown: "ignore"
+
+eval:
+  threshold: 0.4
+
+model:
+  type: "random_forest"
+  params:
+    n_estimators: 300
+    max_depth: null
+    min_samples_leaf: 1
+    class_weight: "balanced"
+    random_state: ${run.seed}
+
