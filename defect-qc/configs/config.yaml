@@ -1,0 +1,47 @@
+run:
+  name: "qcnnbase"
+  seed: 16
+
+num_epochs: 10
+
+mlflow:
+  enabled: true
+  experiment_name: "defect-qc"
+  tracking_uri: null
+  log_config_as_artifact: true
+  log_params: true
+data: 
+  random_state: ${run.seed}
+  num_workers: 2
+  val_size: 0.2
+  img_mode: "L"
+  img_size: 224
+  augment:
+    random_flip: 0.5
+    color_jitter_br: 0.2
+    color_jitter_ct: 0.2
+  label_col: "defect"
+  path_col: "file_path"
+  batch_size: 32
+
+model:
+  _target_: models.QCCNNBase
+  in_channels: null
+  num_classes: 2
+
+criterion: 
+  _target_: torch.nn.CrossEntropyLoss
+
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 0.001
+  weight_decay: 0.0001
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  mode: min
+  factor: 0.7
+  patience: 20
+
+evaluation:
+  threshold: 0.5
