@@ -107,5 +107,9 @@ def main(cfg: DictConfig):
         train_model(cfg, model, dl_train, dl_val, criterion, optimizer, scheduler, device)
         test_model(cfg, model, dl_test, criterion, device)
 
+        # Log trained model to MLflow
+        mlflow.pytorch.log_model(model, artifact_path="model")
+
+
 if __name__ == "__main__":
     main()
