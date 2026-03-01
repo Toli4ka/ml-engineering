@@ -2,7 +2,7 @@ run:
   name: "qcnnbase"
   seed: 16
 
-num_epochs: 10
+num_epochs: 1
 
 mlflow:
   enabled: true
@@ -10,6 +10,7 @@ mlflow:
   tracking_uri: null
   log_config_as_artifact: true
   log_params: true
+
 data: 
   random_state: ${run.seed}
   num_workers: 2
@@ -23,6 +24,7 @@ data:
   label_col: "defect"
   path_col: "file_path"
   batch_size: 32
+  class_weights: [1.154, 0.882]
 
 model:
   _target_: models.QCCNNBase

@@ -47,9 +47,10 @@ defect-qc/
 │
 ├── configs/                # Hydra configuration files
 ├── src/
-│   ├── train.py            # Training + evaluation pipeline
+│   ├── train.py            # Training pipeline
 │   ├── models.py           # CNN model definition
-│   └── ...
+│   ├── eval.py             # Evaluation pipeline
+|   └── data.py             # Load and transform data
 │
 ├── outputs/                # Hydra run folders
 ├── mlflow/                 # Shared MLflow backend (optional)
@@ -178,9 +179,6 @@ Final model performance on the held‑out test set:
 | Recall     | 0.98   |
 | F1 Score   | 0.99   |
 
-Confusion Matrix:
-
-<img src="outputs/2026-02-28/13-50-17/confusion_matrix_test.png" width="300">
 
 ### Interpretation
 
