@@ -20,6 +20,7 @@ dependencies = [
     "numpy",
     "matplotlib",
     "torchmetrics",
+    "kagglehub"
 ]
 
 [project.optional-dependencies]
