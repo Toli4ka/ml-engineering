@@ -139,8 +139,6 @@ def log_run(pipeline, train_metrics, val_metrics):
 
 @hydra.main(version_base=None, config_path="../configs", config_name="config")
 def main(cfg: DictConfig):
-    tracking_dir = Path(hydra.utils.get_original_cwd()) / "mlruns"
-    mlflow.set_tracking_uri(tracking_dir.as_uri())
     mlflow.set_experiment(cfg.mlflow.experiment_name)
 
     with mlflow.start_run(run_name=cfg.run.name):

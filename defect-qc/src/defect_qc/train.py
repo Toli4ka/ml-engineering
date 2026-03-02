@@ -5,8 +5,8 @@ from hydra.utils import instantiate
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
 import mlflow
-from data import get_data_dir, create_manifest, build_loader, build_dataframes
-from eval import evaluate_binary_classification, save_confusion_matrix
+from defect_qc.data import get_data_dir, create_manifest, build_loader, build_dataframes
+from defect_qc.eval import evaluate_binary_classification, save_confusion_matrix
 
 
 def log_metrics(metrics: dict, prefix: str, step: int):
