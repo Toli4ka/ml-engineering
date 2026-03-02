@@ -45,15 +45,19 @@ The author-provided train/test split is used.
 ```
 defect-qc/
 │
-├── configs/                # Hydra configuration files
+├── configs/                    # Hydra configuration files
 ├── src/
-│   ├── train.py            # Training pipeline
-│   ├── models.py           # CNN model definition
-│   ├── eval.py             # Evaluation pipeline
-|   └── data.py             # Load and transform data
+│   └── defect_qc/              # Python package
+│       ├── __init__.py
+│       ├── train.py            # Training entry point
+│       ├── models.py           # CNN model definition
+│       ├── eval.py             # Evaluation logic
+│       └── data.py             # Data loading & transforms
 │
-├── outputs/                # Hydra run folders
-├── mlflow/                 # Shared MLflow backend (optional)
+├── tests/                      # Pytest test suite
+├── pyproject.toml              # Project metadata & dependencies
+├── .github/workflows/          # CI configuration
+├── outputs/                    # Hydra run folders
 └── README.md
 ```
 
@@ -133,25 +137,60 @@ The project logs:
 
 ---
 
-## 🚀 How to Run
+## 🚀 Installation & Usage
 
-Install dependencies:
+### 1️⃣ Create virtual environment
 
 ```bash
-pip install -r requirements.txt
+python -m venv .venv
+source .venv/bin/activate
 ```
 
-Run training:
+### 2️⃣ Install project (editable mode)
 
 ```bash
-python src/train.py
+pip install -e ".[dev]"
+```
+
+This installs the project as a package (`defect_qc`) and includes development dependencies (pytest, linting tools).
+
+---
+
+### 3️⃣ Run training
+
+```bash
+python -m defect_qc.train
 ```
 
 Override parameters via Hydra:
 
 ```bash
-python src/train.py data.img_size=128 num_epochs=20
+python -m defect_qc.train data.img_size=128 num_epochs=20
 ```
+
+---
+
+## 🧪 Testing
+
+Run unit tests:
+
+```bash
+pytest
+```
+
+---
+
+## 🔄 Continuous Integration
+
+GitHub Actions automatically runs on every push and pull request.
+
+CI pipeline:
+
+- Installs the package in a clean environment
+- Runs the test suite
+- Ensures reproducible installation from `pyproject.toml`
+
+This guarantees that the project builds and tests successfully outside the local environment.
 
 ---
 
