@@ -2,11 +2,9 @@ name: CI
 
 on:
   push:
-    paths:
-      - "defect-qc/**"
+    paths: ["defect-qc/**"]
   pull_request:
-    paths:
-      - "defect-qc/**"
+    paths: ["defect-qc/**"]
 
 jobs:
   test:
