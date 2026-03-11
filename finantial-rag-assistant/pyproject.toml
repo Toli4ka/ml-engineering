@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "financial-rag-assistant"
+version = "0.1.0"
+description = "Financial PDF RAG assistant"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "faiss-cpu",
+  "numpy",
+  "openai",
+  "pypdf",
+  "python-dotenv",
+  "streamlit",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["financial_rag_assistant*"]
