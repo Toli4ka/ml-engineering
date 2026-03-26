@@ -1,11 +1,13 @@
-from pathlib import Path
+from ultralytics import YOLO
+from pedestrian_box.utils import get_data_config_path, get_model_path
 
-from pedestrian_box.model import load_yolo_model, predict
+DATA_CONFIG_PATH = get_data_config_path()
+MODEL_PATH = get_model_path()
 
 
-def run_inference(image_path, model_path=None, conf=0.25, iou=0.45):
-    model = load_yolo_model(str(model_path) if model_path else None)
-    return predict(model=model, image_path=Path(image_path), conf=conf, iou=iou)
+def run_inference(image_path, conf=0.25, iou=0.45):
+    model = YOLO(MODEL_PATH)
+    return model.predict(source=str(image_path), conf=conf, iou=iou, verbose=False)[0]
 
 
 def extract_predictions(result):

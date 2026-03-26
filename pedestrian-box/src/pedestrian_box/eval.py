@@ -1,10 +1,11 @@
 from ultralytics import YOLO
-from pathlib import Path
+from pedestrian_box.utils import get_data_config_path, get_model_path
 
-DATA_CONFIG_PATH = Path("/Users/anatolii/Projects/ml-engineering/pedestrian-box/data/data.yml")
+DATA_CONFIG_PATH = get_data_config_path()
+MODEL_PATH = get_model_path()
 
 def main():
-    model = YOLO("yolo26n.pt")
+    model = YOLO(MODEL_PATH)
     metrics = model.val(data=DATA_CONFIG_PATH, imgsz=640, device="mps")
     print(metrics)
 
