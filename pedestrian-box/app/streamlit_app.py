@@ -116,15 +116,15 @@ def main():
     left_col, right_col = st.columns(2)
     with left_col:
         st.subheader("Prediction")
-        st.image(predicted_image, use_container_width=True)
+        st.image(predicted_image, width='stretch')
         st.caption(f"Predicted boxes: {len(predictions)}")
-        st.dataframe(predictions, use_container_width=True)
+        st.dataframe(predictions, width='stretch')
 
     with right_col:
         st.subheader("Ground truth")
-        st.image(ground_truth_image, use_container_width=True)
+        st.image(ground_truth_image, width='stretch')
         st.caption(f"Ground-truth boxes: {len(ground_truth)}")
-        st.dataframe(ground_truth, use_container_width=True)
+        st.dataframe(ground_truth, width='stretch')
 
 
 if __name__ == "__main__":
