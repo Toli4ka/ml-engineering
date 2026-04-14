@@ -15,12 +15,12 @@ from ollama import chat
 
 
 SYSTEM_PROMPT = """You are a careful data-quality assistant.
-You can use MCP tools to inspect and validate CSV timesheet data.
+You can use MCP tools to inspect timesheet imports that are already stored in Postgres.
 When a tool is useful, call it.
 When you get tool results, summarize them clearly for a non-technical employee.
 Do not invent file paths or tool outputs.
 You may only describe tool results that were actually returned by a tool call.
-Do not claim that fixes were suggested, generated, or applied unless the corresponding tool was called successfully.
+Do not claim that CSV validation, fixes, or imports were run by MCP; the MCP server is read-only.
 If a tool exists but has not been called, say that the capability may be available but no tool result has been produced yet.
 """
 
@@ -130,6 +130,7 @@ class AgentRunner:
     mcp_client: McpToolClient
     model: str = "qwen3"
     system_prompt: str = SYSTEM_PROMPT
+    messages: list[dict[str, Any]] | None = None
 
     # _________ DEBUG________________
     think: bool | str | None = None
@@ -154,32 +155,22 @@ class AgentRunner:
         if self.mcp_client.tool_schemas is None:
             raise RuntimeError("MCP tools have not been loaded.")
 
-        messages: list[dict[str, Any]] = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": user_message},
-        ]
-        i = 0
+        if self.messages is None:
+            self.messages = [{"role": "system", "content": self.system_prompt}]
+
+        self.messages.append({"role": "user", "content": user_message})
+
+        i = 1
         while True:
-            self._log_debug(
-                "chat_request",
-                {
-                    "iteration": i + 1,
-                    "model": self.model,
-                    "messages": messages,
-                    "tools": self.mcp_client.tool_schemas,
-                    "think": self.think,
-                },
-            )
-            i += 1
             response = chat(
                 model=self.model,
-                messages=messages,
+                messages=self.messages,
                 tools=self.mcp_client.tool_schemas,
                 # think=None
             )
 
             assistant_message = response.message.model_dump(exclude_none=True) #NOTE: Model output with reasoning to call a tool
-            messages.append(assistant_message)
+            self.messages.append(assistant_message)
 
             tool_calls = getattr(response.message, "tool_calls", None) or [] #NOTE: here model will tell which model to call
             if not tool_calls:
@@ -189,45 +180,66 @@ class AgentRunner:
                 tool_name = tool_call.function.name
                 tool_args = tool_call.function.arguments or {}
 
-                print(f"\n[tool call] {tool_name}({tool_args})")
+                # print(f"\n[tool call] {tool_name}({tool_args})") #TODO: make log
                 tool_output = await self.mcp_client.call_tool(tool_name, tool_args)
-                print(f"[tool result] {tool_output}")
+                # print(f"[tool result] {tool_output}")
 
-                messages.append(
+                self.messages.append(
                     {
                         "role": "tool",
                         "tool_name": tool_name,
                         "content": tool_output,
                     }
                 )
+            self._log_debug(
+                "chat_request",
+                {
+                    "iteration": i + 1,
+                    "model": self.model,
+                    "messages": self.messages
+                },
+            )
+            i += 1
 
 
 async def run_agent(
     user_message: str,
-    model: str = "qwen3",
-    server_script: Path | None = None,
-    think: bool | str | None = None,
+    model: str,
+    server_script: Path,
     debug_log_path: Path | None = None,
-) -> str:
-    resolved_server = (server_script or Path(__file__).with_name("server.py")).resolve() #TODO: explain how this works. why we need this part  Path(__file__).with_name("server.py") if server_script has default parameter? 
+) -> None:
 
-    async with McpToolClient(resolved_server) as mcp_client:
+    async with McpToolClient(server_script) as mcp_client:
         print("Connected MCP tools:", ", ".join(sorted(mcp_client.tool_names or [])) or "(none)")
+        
         runner = AgentRunner(
             mcp_client=mcp_client,
             model=model,
-            think=think,
             debug_log_path=debug_log_path,
         )
-        return await runner.run(user_message)
+
+        while True:
+            user_message = input("\nYou: ").strip()
+
+            if user_message.lower() in {"exit", "quit", "q", "/exit", "/quit"}:
+                print("Bye.")
+                return
+
+            if not user_message:
+                continue
+
+            response = await runner.run(user_message)
+            print("\nAssistant:")
+            print(response)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Ollama + MCP CSV validation client")
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Ollama + read-only timesheet DB MCP client")
     parser.add_argument(
         "message",
         nargs="?",
-        default="Validate the CSV at ./example_timesheet.csv and explain the issues.",
+        default="List recent timesheet imports and summarize the latest one.",
         help="User message to send to the local agent.",
     )
     parser.add_argument(
@@ -249,20 +261,20 @@ def main() -> None:
         "--debug-log",
         help="Write JSONL debug logs with assistant responses and tool results.",
     )
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    response = asyncio.run(
+
+def main() -> None:
+    args = parse_args()
+
+    asyncio.run(
         run_agent(
             args.message,
             model=args.model,
             server_script=Path(args.server),
-            think=args.think,
             debug_log_path=Path(args.debug_log).resolve() if args.debug_log else None,
         )
     )
-
-    print("\nAssistant:\n")
-    print(response)
 
 
 if __name__ == "__main__":
