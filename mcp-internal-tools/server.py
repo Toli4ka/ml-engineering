@@ -10,6 +10,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from config import get_database_url
+from scripts.generate_issue_suggestions import generate_issue_suggestions
 
 # FastMCP auto-generates tool schemas from type hints/docstrings.
 mcp = FastMCP("Timesheet DB Reader", json_response=True)
@@ -186,6 +187,100 @@ def list_validation_issues(
         tuple(params),
     )
     return {"status": "ok", "issues": rows, "returned_count": len(rows)}
+
+
+@mcp.tool()
+def generate_validation_issue_suggestions(
+    import_run_id: str,
+    severity: str | None = None,
+) -> dict[str, Any]:
+    """
+    Generate and save fix suggestions for validation issues in one import run.
+
+    This tool writes to validation_issue_suggestions. It does not modify
+    original timesheet entries.
+    """
+    if severity is not None and severity not in {"error", "warning"}:
+        return {
+            "status": "error",
+            "message": "severity must be either 'error', 'warning', or null.",
+        }
+
+    import_run = _fetch_one(
+        """
+        select id
+        from import_runs
+        where id = %s
+        """,
+        (import_run_id,),
+    )
+    if import_run is None:
+        return {"status": "error", "message": f"Import run not found: {import_run_id}"}
+
+    summary = generate_issue_suggestions(
+        import_run_id=import_run_id,
+        database_url=get_database_url(),
+        severity=severity,
+    )
+    return {"status": "ok", "summary": summary}
+
+
+@mcp.tool()
+def list_validation_issue_suggestions(
+    import_run_id: str,
+    issue_type: str | None = None,
+    min_confidence: float | None = None,
+    limit: int = 50,
+) -> dict[str, Any]:
+    """
+    List saved validation issue suggestions for one import run.
+
+    Optional filters can narrow by issue_type or minimum confidence.
+    This tool is read-only.
+    """
+    safe_limit = max(1, min(limit, 200))
+    filters = ["s.import_run_id = %s"]
+    params: list[Any] = [import_run_id]
+
+    if issue_type:
+        filters.append("s.issue_type = %s")
+        params.append(issue_type)
+
+    if min_confidence is not None:
+        filters.append("s.confidence >= %s")
+        params.append(min_confidence)
+
+    params.append(safe_limit)
+    rows = _fetch_all(
+        f"""
+        select
+            s.id,
+            s.validation_issue_id,
+            i.source_row_number,
+            s.issue_type,
+            i.severity,
+            i.column_name,
+            s.raw_value,
+            s.suggested_value,
+            s.confidence,
+            s.suggestion_reason,
+            i.message as issue_message,
+            e.employee_id,
+            e.employee_name,
+            e.project_id,
+            s.created_at
+        from validation_issue_suggestions s
+        join validation_issues i
+            on i.id = s.validation_issue_id
+        left join timesheet_entries e
+            on e.id = i.timesheet_entry_id
+        where {' and '.join(filters)}
+        order by i.source_row_number, s.id
+        limit %s
+        """,
+        tuple(params),
+    )
+    return {"status": "ok", "suggestions": rows, "returned_count": len(rows)}
 
 
 @mcp.tool()
