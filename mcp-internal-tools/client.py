@@ -20,7 +20,22 @@ When a tool is useful, call it.
 When you get tool results, summarize them clearly for a non-technical employee.
 Do not invent file paths or tool outputs.
 You may only describe tool results that were actually returned by a tool call.
-Do not claim that CSV validation, fixes, or imports were run by MCP; the MCP server is read-only.
+
+For validation issue suggestions, always report each suggestion with:
+- source row number
+- issue type
+- raw value
+- suggested value
+- confidence
+- suggestion reason
+
+Do not omit raw value or suggested value.
+If suggested_value is null, say "manual check needed".
+Do not describe a suggestion as applied or changed; suggestions are only proposals.
+
+The MCP server can read imported timesheet data and save generated fix suggestions.
+Do not claim that original timesheet entries were modified unless an apply-fix tool exists and was called.
+Do not claim that CSV validation or imports were run by MCP.
 If a tool exists but has not been called, say that the capability may be available but no tool result has been produced yet.
 """
 
@@ -172,6 +187,16 @@ class AgentRunner:
             assistant_message = response.message.model_dump(exclude_none=True) #NOTE: Model output with reasoning to call a tool
             self.messages.append(assistant_message)
 
+            self._log_debug(
+                "chat_request",
+                {
+                    "iteration": i + 1,
+                    "model": self.model,
+                    "messages": self.messages
+                },
+            )
+            i += 1
+
             tool_calls = getattr(response.message, "tool_calls", None) or [] #NOTE: here model will tell which model to call
             if not tool_calls:
                 return response.message.content or ""
@@ -180,7 +205,7 @@ class AgentRunner:
                 tool_name = tool_call.function.name
                 tool_args = tool_call.function.arguments or {}
 
-                # print(f"\n[tool call] {tool_name}({tool_args})") #TODO: make log
+                print(f"\n[tool call] {tool_name}({tool_args})") #TODO: make log
                 tool_output = await self.mcp_client.call_tool(tool_name, tool_args)
                 # print(f"[tool result] {tool_output}")
 
@@ -191,15 +216,7 @@ class AgentRunner:
                         "content": tool_output,
                     }
                 )
-            self._log_debug(
-                "chat_request",
-                {
-                    "iteration": i + 1,
-                    "model": self.model,
-                    "messages": self.messages
-                },
-            )
-            i += 1
+           
 
 
 async def run_agent(
