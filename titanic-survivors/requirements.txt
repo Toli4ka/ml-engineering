@@ -144,6 +144,7 @@ sqlalchemy==2.0.46
 sqlparse==0.5.5
 stack-data==0.6.3
 starlette==0.50.0
+streamlit==1.52.2
 terminado==0.18.1
 threadpoolctl==3.6.0
 tinycss2==1.4.0

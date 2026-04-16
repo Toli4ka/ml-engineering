@@ -110,6 +110,14 @@ Run with Hydra overrides:
 python src/train.py eval.threshold=0.5 model.params.n_estimators=500 run.name=rf_threshold_05
 ```
 
+Run the Streamlit prediction UI:
+
+```bash
+streamlit run src/app.py
+```
+
+The app loads the newest local MLflow sklearn model artifact from `mlruns` and uses the threshold configured in `configs/config.yaml`.
+
 
 ## Repository Structure
 
