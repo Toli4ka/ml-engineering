@@ -1,10 +1,14 @@
 from pathlib import Path
+import copy
+import numpy as np
 import torch
 import hydra
-from hydra.utils import instantiate
+from hydra.utils import instantiate, to_absolute_path
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
 import mlflow
+from mlflow.models.signature import ModelSignature
+from mlflow.types.schema import Schema, TensorSpec
 from defect_qc.data import get_data_dir, create_manifest, build_loader, build_dataframes
 from defect_qc.eval import evaluate_binary_classification, save_confusion_matrix
 
@@ -13,6 +17,49 @@ def log_metrics(metrics: dict, prefix: str, step: int):
     for k, v in metrics.items():
         if isinstance(v, (int, float)):
             mlflow.log_metric(f"{prefix}/{k}", float(v), step=step)
+
+
+def log_model(cfg, model, in_channels: int):
+    input_shape = (1, in_channels, cfg.data.img_size, cfg.data.img_size)
+    input_example = torch.zeros(input_shape, dtype=torch.float32)
+    model_for_logging = copy.deepcopy(model).to("cpu").eval()
+    signature = ModelSignature(
+        inputs=Schema([TensorSpec(np.dtype(np.float32), input_shape)])
+    )
+    mlflow.pytorch.log_model(
+        model_for_logging,
+        name="model",
+        input_example=input_example,
+        signature=signature,
+        serialization_format="pt2",
+    )
+
+
+def save_demo_checkpoint(cfg, model, in_channels: int) -> Path:
+    checkpoint_path = Path(to_absolute_path(cfg.demo.checkpoint_path))
+    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+
+    checkpoint = {
+        "model_state_dict": {
+            name: tensor.detach().cpu()
+            for name, tensor in model.state_dict().items()
+        },
+        "model": OmegaConf.to_container(cfg.model, resolve=True),
+        "data": {
+            "img_mode": cfg.data.img_mode,
+            "img_size": int(cfg.data.img_size),
+            "in_channels": int(in_channels),
+            "class_names": list(cfg.demo.class_names),
+            "label_mapping": {"ok": 0, "defect": 1},
+        },
+        "evaluation": {
+            "threshold": float(cfg.evaluation.threshold),
+        },
+        "run": OmegaConf.to_container(cfg.run, resolve=True),
+    }
+    torch.save(checkpoint, checkpoint_path)
+    return checkpoint_path
+
 
 def train_model(cfg, model, dl_train, dl_val, criterion, optimizer, scheduler, device):
     def _train_one_epoch():
@@ -78,7 +125,7 @@ def test_model(cfg, model, dl_test, criterion, device):
 
 
 
-@hydra.main(version_base=None, config_path="../configs", config_name="config")
+@hydra.main(version_base=None, config_path="../../configs", config_name="config")
 def main(cfg: DictConfig):
     mlflow.set_experiment(cfg.mlflow.experiment_name)
 
@@ -107,8 +154,12 @@ def main(cfg: DictConfig):
         train_model(cfg, model, dl_train, dl_val, criterion, optimizer, scheduler, device)
         test_model(cfg, model, dl_test, criterion, device)
 
+        demo_checkpoint_path = save_demo_checkpoint(cfg, model, in_channels)
+        print(f"Saved demo checkpoint: {demo_checkpoint_path}")
+
         # Log trained model to MLflow
-        mlflow.pytorch.log_model(model, artifact_path="model")
+        mlflow.log_artifact(str(demo_checkpoint_path), artifact_path="checkpoints")
+        log_model(cfg, model, in_channels)
 
 
 if __name__ == "__main__":

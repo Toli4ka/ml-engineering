@@ -20,7 +20,8 @@ dependencies = [
     "numpy",
     "matplotlib",
     "torchmetrics",
-    "kagglehub"
+    "kagglehub",
+    "streamlit"
 ]
 
 [project.optional-dependencies]
